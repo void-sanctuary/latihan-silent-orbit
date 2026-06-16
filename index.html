@@ -7,64 +7,79 @@
 
 <style>
 body{
-    margin:0;
-    background:black;
-    color:white;
-    font-family:monospace;
-    overflow:hidden;
+margin:0;
+background:black;
+overflow:hidden;
+font-family:monospace;
+color:white;
 }
 
 #ui{
-    position:absolute;
-    top:10px;
-    left:10px;
-    z-index:10;
+position:absolute;
+top:10px;
+left:10px;
+z-index:10;
 }
 
 canvas{
-    display:block;
-    background:#15192d;
+display:block;
+background:#14182d;
 }
 
 #controls{
-    position:fixed;
-    bottom:20px;
-    width:100%;
-    text-align:center;
+position:fixed;
+bottom:20px;
+width:100%;
+display:flex;
+justify-content:space-between;
+padding:0 20px;
+box-sizing:border-box;
+}
+
+.control-group{
+display:flex;
+flex-wrap:wrap;
+width:140px;
+justify-content:center;
 }
 
 button{
-    width:70px;
-    height:70px;
-    margin:5px;
-    font-size:22px;
-    border:none;
-    border-radius:10px;
+width:60px;
+height:60px;
+margin:5px;
+font-size:20px;
+border:none;
+border-radius:12px;
 }
 </style>
 </head>
 <body>
 
 <div id="ui">
-    <div>HP: <span id="hp">100</span></div>
-    <div>Bond: <span id="bond">50</span></div>
-    <div>EXP: <span id="exp">0</span></div>
-    <div>Route: <span id="route">Normal</span></div>
-    <div>Character: <span id="char">Naz</span></div>
+<div>Character: <span id="char"></span></div>
+<div>HP: <span id="hp"></span></div>
+<div>Bond: <span id="bond"></span></div>
+<div>EXP: <span id="exp"></span></div>
+<div>Route: <span id="route"></span></div>
 </div>
 
 <canvas id="game"></canvas>
 
 <div id="controls">
-    <button onclick="move('up')">↑</button><br>
 
-    <button onclick="move('left')">←</button>
-    <button onclick="attack()">⚔</button>
-    <button onclick="move('right')">→</button><br>
+<div class="control-group">
+<button onclick="move('up')">↑</button>
+<button onclick="move('left')">←</button>
+<button onclick="move('down')">↓</button>
+<button onclick="move('right')">→</button>
+</div>
 
-    <button onclick="move('down')">↓</button><br>
+<div class="control-group">
+<button onclick="attack()">⚔</button>
+<button onclick="skill()">✦</button>
+<button onclick="switchChar()">⇄</button>
+</div>
 
-    <button onclick="switchChar()">SWITCH</button>
 </div>
 
 <script>
@@ -72,134 +87,173 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight - 200;
+canvas.height = window.innerHeight - 180;
 
-let player = {
-    x:50,
-    y:50,
-    size:40,
-    hp:100,
-    bond:50,
-    exp:0,
-    char:"Naz"
+let naz = {
+x:100,
+y:100,
+hp:100,
+bond:50,
+exp:0
 };
 
+let dokja = {
+x:100,
+y:100,
+hp:100,
+bond:50,
+exp:0
+};
+
+let current = "Naz";
+
 let enemy = {
-    x:250,
-    y:200,
-    size:40,
-    hp:30
+x:300,
+y:250,
+hp:40
 };
 
 let route = "Normal";
 
-function move(direction){
-    if(direction==="up") player.y -= 20;
-    if(direction==="down") player.y += 20;
-    if(direction==="left") player.x -= 20;
-    if(direction==="right") player.x += 20;
-
-    boundaries();
-    drawGame();
+function getPlayer(){
+return current === "Naz" ? naz : dokja;
 }
 
-function boundaries(){
-    if(player.x < 0) player.x = 0;
-    if(player.y < 0) player.y = 0;
-    if(player.x > canvas.width-player.size)
-        player.x = canvas.width-player.size;
-    if(player.y > canvas.height-player.size)
-        player.y = canvas.height-player.size;
+function move(dir){
+let p = getPlayer();
+
+if(dir==="up") p.y -= 20;
+if(dir==="down") p.y += 20;
+if(dir==="left") p.x -= 20;
+if(dir==="right") p.x += 20;
+
+boundary(p);
+draw();
+}
+
+function boundary(p){
+if(p.x<0)p.x=0;
+if(p.y<0)p.y=0;
+if(p.x>canvas.width-40)p.x=canvas.width-40;
+if(p.y>canvas.height-40)p.y=canvas.height-40;
 }
 
 function attack(){
-    let dx = player.x - enemy.x;
-    let dy = player.y - enemy.y;
-    let dist = Math.sqrt(dx*dx + dy*dy);
+let p = getPlayer();
 
-    if(dist < 80){
-        enemy.hp -= 10;
+let dx = p.x - enemy.x;
+let dy = p.y - enemy.y;
+let dist = Math.sqrt(dx*dx + dy*dy);
 
-        if(player.char==="Dokja"){
-            player.bond += 5;
-        }
+if(dist < 80){
+enemy.hp -= 10;
+p.exp += 5;
 
-        if(enemy.hp <= 0){
-            player.exp += 10;
+if(current==="Dokja"){
+p.bond += 8;
+}
 
-            enemy.x = Math.random() * (canvas.width-50);
-            enemy.y = Math.random() * (canvas.height-50);
-            enemy.hp = 30;
-        }
-    }
+if(enemy.hp <= 0){
+enemy.hp = 40;
+enemy.x = Math.random() * (canvas.width-50);
+enemy.y = Math.random() * (canvas.height-50);
+}
+}
 
-    updateRoute();
-    updateUI();
-    drawGame();
+updateRoute();
+draw();
+}
+
+function skill(){
+let p = getPlayer();
+
+if(current==="Naz"){
+enemy.hp -= 20;
+}
+
+if(current==="Dokja"){
+p.bond += 15;
+}
+
+updateRoute();
+draw();
 }
 
 function switchChar(){
-    if(player.char==="Naz"){
-        player.char="Dokja";
-    } else {
-        player.char="Naz";
-    }
-
-    updateUI();
-    drawGame();
+current = current==="Naz" ? "Dokja" : "Naz";
+draw();
 }
 
 function enemyAttack(){
-    let dx = player.x - enemy.x;
-    let dy = player.y - enemy.y;
-    let dist = Math.sqrt(dx*dx + dy*dy);
+let p = getPlayer();
 
-    if(dist < 50){
-        player.hp -= 0.2;
-    }
+let dx = p.x - enemy.x;
+let dy = p.y - enemy.y;
+let dist = Math.sqrt(dx*dx + dy*dy);
+
+if(dist < 50){
+p.hp -= 1;
+}
 }
 
 function updateRoute(){
-    if(player.bond >= 100){
-        route = "Yandere Route";
-    }
+let p = getPlayer();
 
-    if(player.exp >= 50){
-        route = "Rival Route";
-    }
+if(dokja.bond >= 100){
+route = "Yandere Route";
+}
+
+if(naz.exp >= 50){
+route = "Rival Route";
+}
+}
+
+function drawCharacter(x,y,type){
+if(type==="Naz"){
+ctx.fillStyle="#5c6cff";
+ctx.fillRect(x,y,28,35); // body
+ctx.fillStyle="#dcdcdc";
+ctx.fillRect(x+4,y-10,20,15); // head
+}else{
+ctx.fillStyle="#ffae57";
+ctx.fillRect(x,y,24,30); // body
+ctx.fillStyle="#ffe0c4";
+ctx.fillRect(x+3,y-10,18,15); // head
+}
+}
+
+function drawEnemy(){
+ctx.fillStyle="red";
+ctx.beginPath();
+ctx.arc(enemy.x, enemy.y, 20, 0, Math.PI*2);
+ctx.fill();
 }
 
 function updateUI(){
-    document.getElementById("hp").innerText = Math.floor(player.hp);
-    document.getElementById("bond").innerText = player.bond;
-    document.getElementById("exp").innerText = player.exp;
-    document.getElementById("route").innerText = route;
-    document.getElementById("char").innerText = player.char;
+let p = getPlayer();
+
+document.getElementById("char").innerText = current;
+document.getElementById("hp").innerText = p.hp;
+document.getElementById("bond").innerText = p.bond;
+document.getElementById("exp").innerText = p.exp;
+document.getElementById("route").innerText = route;
 }
 
-function drawGame(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    if(player.char==="Naz"){
-        ctx.fillStyle = "#5c6cff";
-    } else {
-        ctx.fillStyle = "#ffae57";
-    }
-
-    ctx.fillRect(player.x, player.y, player.size, player.size);
-
-    ctx.fillStyle = "red";
-    ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+drawCharacter(naz.x,naz.y,"Naz");
+drawCharacter(dokja.x,dokja.y,"Dokja");
+drawEnemy();
+updateUI();
 }
 
-function gameLoop(){
-    enemyAttack();
-    updateUI();
-    drawGame();
-    requestAnimationFrame(gameLoop);
-}
+setInterval(()=>{
+enemyAttack();
+draw();
+},100);
 
-gameLoop();
+draw();
 </script>
 
 </body>
