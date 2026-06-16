@@ -3,53 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Silent Orbit</title>
+<title>Silent Orbit v2</title>
 
 <style>
 body{
 margin:0;
-background:black;
 overflow:hidden;
+background:black;
 font-family:monospace;
-color:white;
+}
+
+canvas{
+display:block;
 }
 
 #ui{
 position:absolute;
 top:10px;
 left:10px;
+color:white;
 z-index:10;
+background:rgba(0,0,0,0.4);
+padding:8px;
+border-radius:10px;
 }
 
-canvas{
-display:block;
-background:#14182d;
-}
-
-#controls{
+#joystick{
 position:fixed;
-bottom:20px;
-width:100%;
-display:flex;
-justify-content:space-between;
-padding:0 20px;
-box-sizing:border-box;
+bottom:40px;
+left:30px;
+width:120px;
+height:120px;
+border-radius:50%;
+background:rgba(255,255,255,0.15);
+touch-action:none;
 }
 
-.control-group{
+#stick{
+position:absolute;
+left:35px;
+top:35px;
+width:50px;
+height:50px;
+border-radius:50%;
+background:white;
+}
+
+#actions{
+position:fixed;
+bottom:40px;
+right:30px;
 display:flex;
-flex-wrap:wrap;
-width:140px;
-justify-content:center;
+flex-direction:column;
+gap:10px;
 }
 
 button{
-width:60px;
-height:60px;
-margin:5px;
-font-size:20px;
+width:70px;
+height:70px;
 border:none;
-border-radius:12px;
+border-radius:50%;
+font-size:20px;
 }
 </style>
 </head>
@@ -65,21 +79,14 @@ border-radius:12px;
 
 <canvas id="game"></canvas>
 
-<div id="controls">
-
-<div class="control-group">
-<button onclick="move('up')">↑</button>
-<button onclick="move('left')">←</button>
-<button onclick="move('down')">↓</button>
-<button onclick="move('right')">→</button>
+<div id="joystick">
+<div id="stick"></div>
 </div>
 
-<div class="control-group">
+<div id="actions">
 <button onclick="attack()">⚔</button>
 <button onclick="skill()">✦</button>
 <button onclick="switchChar()">⇄</button>
-</div>
-
 </div>
 
 <script>
@@ -87,65 +94,39 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight - 180;
+canvas.height = window.innerHeight;
 
 let naz = {
-x:100,
-y:100,
-hp:100,
-bond:50,
-exp:0
+x:150,y:250,hp:100,bond:50,exp:0
 };
 
 let dokja = {
-x:100,
-y:100,
-hp:100,
-bond:50,
-exp:0
+x:220,y:250,hp:100,bond:50,exp:0
 };
 
 let current = "Naz";
 
 let enemy = {
-x:300,
-y:250,
-hp:40
+x:500,y:250,hp:50
 };
 
 let route = "Normal";
 
 function getPlayer(){
-return current === "Naz" ? naz : dokja;
+return current==="Naz" ? naz : dokja;
 }
 
-function move(dir){
-let p = getPlayer();
-
-if(dir==="up") p.y -= 20;
-if(dir==="down") p.y += 20;
-if(dir==="left") p.x -= 20;
-if(dir==="right") p.x += 20;
-
-boundary(p);
-draw();
-}
-
-function boundary(p){
-if(p.x<0)p.x=0;
-if(p.y<0)p.y=0;
-if(p.x>canvas.width-40)p.x=canvas.width-40;
-if(p.y>canvas.height-40)p.y=canvas.height-40;
+function switchChar(){
+current = current==="Naz" ? "Dokja" : "Naz";
 }
 
 function attack(){
 let p = getPlayer();
-
 let dx = p.x - enemy.x;
 let dy = p.y - enemy.y;
 let dist = Math.sqrt(dx*dx + dy*dy);
 
-if(dist < 80){
+if(dist < 70){
 enemy.hp -= 10;
 p.exp += 5;
 
@@ -154,14 +135,11 @@ p.bond += 8;
 }
 
 if(enemy.hp <= 0){
-enemy.hp = 40;
-enemy.x = Math.random() * (canvas.width-50);
-enemy.y = Math.random() * (canvas.height-50);
+enemy.x = Math.random()*canvas.width;
+enemy.y = Math.random()*(canvas.height-200);
+enemy.hp = 50;
 }
 }
-
-updateRoute();
-draw();
 }
 
 function skill(){
@@ -174,66 +152,112 @@ enemy.hp -= 20;
 if(current==="Dokja"){
 p.bond += 15;
 }
-
-updateRoute();
-draw();
 }
 
-function switchChar(){
-current = current==="Naz" ? "Dokja" : "Naz";
-draw();
-}
-
-function enemyAttack(){
+function enemyAI(){
 let p = getPlayer();
 
 let dx = p.x - enemy.x;
 let dy = p.y - enemy.y;
 let dist = Math.sqrt(dx*dx + dy*dy);
 
-if(dist < 50){
-p.hp -= 1;
+if(dist < 220){
+enemy.x += dx * 0.02;
+enemy.y += dy * 0.02;
+}
+
+if(dist < 40){
+p.hp -= 0.5;
 }
 }
 
 function updateRoute(){
-let p = getPlayer();
-
 if(dokja.bond >= 100){
 route = "Yandere Route";
 }
-
 if(naz.exp >= 50){
 route = "Rival Route";
 }
 }
 
+function drawBackground(){
+let sky = ctx.createLinearGradient(0,0,0,canvas.height);
+sky.addColorStop(0,"#7ec8ff");
+sky.addColorStop(1,"#d9f4ff");
+ctx.fillStyle = sky;
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="#8bc34a";
+ctx.fillRect(0,canvas.height-180,canvas.width,180);
+
+for(let i=0;i<6;i++){
+ctx.fillStyle="#4caf50";
+ctx.beginPath();
+ctx.arc(100+i*180, canvas.height-220, 40, 0, Math.PI*2);
+ctx.fill();
+
+ctx.fillStyle="#6d4c41";
+ctx.fillRect(90+i*180, canvas.height-180, 20, 40);
+}
+
+ctx.fillStyle="#9e9e9e";
+ctx.beginPath();
+ctx.moveTo(600,canvas.height-180);
+ctx.lineTo(700,200);
+ctx.lineTo(800,canvas.height-180);
+ctx.fill();
+}
+
 function drawCharacter(x,y,type){
 if(type==="Naz"){
-ctx.fillStyle="#5c6cff";
-ctx.fillRect(x,y,28,35); // body
 ctx.fillStyle="#dcdcdc";
-ctx.fillRect(x+4,y-10,20,15); // head
-}else{
-ctx.fillStyle="#ffae57";
-ctx.fillRect(x,y,24,30); // body
+ctx.fillRect(x+8,y,24,24); // head
+
+ctx.fillStyle="#4d6bff";
+ctx.fillRect(x+10,y+24,20,30); // body
+
+ctx.fillStyle="#2d3ea0";
+ctx.fillRect(x+5,y+54,8,20);
+ctx.fillRect(x+27,y+54,8,20);
+
+ctx.fillStyle="#b0b0b0";
+ctx.fillRect(x+2,y+10,8,8);
+ctx.fillRect(x+30,y+10,8,8);
+}
+
+if(type==="Dokja"){
 ctx.fillStyle="#ffe0c4";
-ctx.fillRect(x+3,y-10,18,15); // head
+ctx.fillRect(x+8,y,22,22);
+
+ctx.fillStyle="#ff9b5e";
+ctx.fillRect(x+10,y+22,18,26);
+
+ctx.fillStyle="#cc7a45";
+ctx.fillRect(x+7,y+48,7,18);
+ctx.fillRect(x+25,y+48,7,18);
+
+ctx.fillStyle="#ffcf9c";
+ctx.fillRect(x+2,y+10,7,7);
+ctx.fillRect(x+29,y+10,7,7);
 }
 }
 
 function drawEnemy(){
 ctx.fillStyle="red";
 ctx.beginPath();
-ctx.arc(enemy.x, enemy.y, 20, 0, Math.PI*2);
+ctx.arc(enemy.x,enemy.y,20,0,Math.PI*2);
 ctx.fill();
+
+ctx.fillStyle="white";
+ctx.fillRect(enemy.x-8,enemy.y-5,4,4);
+ctx.fillRect(enemy.x+4,enemy.y-5,4,4);
 }
 
 function updateUI(){
 let p = getPlayer();
 
 document.getElementById("char").innerText = current;
-document.getElementById("hp").innerText = p.hp;
+document.getElementById("hp").innerText = Math.floor(p.hp);
 document.getElementById("bond").innerText = p.bond;
 document.getElementById("exp").innerText = p.exp;
 document.getElementById("route").innerText = route;
@@ -242,16 +266,50 @@ document.getElementById("route").innerText = route;
 function draw(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
 
+drawBackground();
 drawCharacter(naz.x,naz.y,"Naz");
 drawCharacter(dokja.x,dokja.y,"Dokja");
 drawEnemy();
 updateUI();
 }
 
+let joystick = document.getElementById("joystick");
+let stick = document.getElementById("stick");
+
+let active = false;
+
+joystick.addEventListener("touchstart", ()=> active=true);
+joystick.addEventListener("touchend", ()=>{
+active=false;
+stick.style.left="35px";
+stick.style.top="35px";
+});
+
+joystick.addEventListener("touchmove",(e)=>{
+if(!active) return;
+
+let touch = e.touches[0];
+let rect = joystick.getBoundingClientRect();
+
+let x = touch.clientX - rect.left - 25;
+let y = touch.clientY - rect.top - 25;
+
+stick.style.left = x+"px";
+stick.style.top = y+"px";
+
+let p = getPlayer();
+
+if(x < 20) p.x -= 3;
+if(x > 50) p.x += 3;
+if(y < 20) p.y -= 3;
+if(y > 50) p.y += 3;
+});
+
 setInterval(()=>{
-enemyAttack();
+enemyAI();
+updateRoute();
 draw();
-},100);
+},80);
 
 draw();
 </script>
