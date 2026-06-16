@@ -50,7 +50,7 @@
         <div id="score-display">Skor: 0</div>
     </div>
     
-    <div id="instructions">Ketuk layar untuk melompat & memulai musik</div>
+    <div id="instructions">Ketuk layar untuk melompat</div>
 
     <canvas id="gameCanvas"></canvas>
 
@@ -66,64 +66,50 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // --- WEB AUDIO API (Sintesis Musik & Suara Tanpa File) ---
+        // --- WEB AUDIO API ---
         let audioCtx = null;
         let bgmInterval = null;
 
         function initAudio() {
-            if (audioCtx) return; // Cegah duplikasi
+            if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             startBGM();
         }
 
-        // Efek Suara Lompat (SFX)
         function playJumpSound() {
             if (!audioCtx) return;
             let osc = audioCtx.createOscillator();
             let gain = audioCtx.createGain();
-            
             osc.type = 'triangle';
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            // Suara naik meluncur ke atas (pitch bend)
-            osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.15);
-            
-            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-            
+            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(700, audioCtx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.15);
+            osc.stop(audioCtx.currentTime + 0.12);
         }
 
-        // Musik Latar Otomatis (BGM Retro Space)
         function startBGM() {
-            const notes = [110, 130.81, 146.83, 164.81, 196.00]; // Nada Pentatonik Minor (Santai)
+            const notes = [110, 130.81, 146.83, 164.81, 196.00, 220, 261.63];
             let step = 0;
-
             bgmInterval = setInterval(() => {
                 if (gameState !== 'PLAYING' && gameState !== 'START') return;
-                
                 let osc = audioCtx.createOscillator();
                 let gain = audioCtx.createGain();
-                
                 osc.type = 'sine';
-                // Membuat melodi acak yang harmonis
                 let currentNote = notes[Math.floor(Math.random() * notes.length)];
-                if (step % 4 === 0) currentNote = notes[0]; // Bassline penentu tempo
-                
+                if (step % 4 === 0) currentNote = notes[1]; 
                 osc.frequency.setValueAtTime(currentNote, audioCtx.currentTime);
-                
-                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-                
+                gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.4);
-                
+                osc.stop(audioCtx.currentTime + 0.35);
                 step++;
-            }, 400); // Kecepatan tempo musik
+            }, 350);
         }
 
         // --- LOGIKA GAME & VISUAL ---
@@ -141,16 +127,44 @@
             });
         }
 
+        // Efek Partikel Ekor Pesawat (Trail)
+        let particles = [];
+        function createTrail(x, y) {
+            particles.push({
+                x: x, y: y,
+                radius: 4 + Math.random() * 3,
+                color: '#ff79c6',
+                alpha: 1,
+                decay: 0.05
+            });
+        }
+
         // Player dengan sistem Animasi Pergerakan (Lerp)
         let player = { 
             x: 0, y: 0, 
             targetX: 0, targetY: 0,
-            radius: 10, color: '#ff79c6',
-            isMoving: false, speed: 0.15 
+            radius: 9, color: '#ff79c6',
+            isMoving: false, speed: 0.18 
         };
         
         let planets = [];
         let currentPlanetIndex = 0;
+
+        // Fungsi pembuat planet acak yang bervariasi jenisnya
+        function generateRandomPlanet(yPosition) {
+            const radius = 15 + Math.random() * 25; // Ukuran variatif (kecil banget - besar)
+            // Kecepatan putar menyesuaikan ukuran (planet besar lebih lambat, kecil lebih ngebut)
+            const rotSpeed = (0.01 + Math.random() * 0.02) * (25 / radius) * (Math.random() > 0.5 ? 1 : -1); 
+            return {
+                x: canvas.width / 2 + (Math.random() * 120 - 60), 
+                y: yPosition,
+                radius: radius,
+                angle: Math.random() * Math.PI * 2,
+                rotSpeed: rotSpeed,
+                orbitDist: radius + 25 + Math.random() * 25, // Jarak orbit proporsional dengan ukuran planet
+                color: `hsl(${Math.random() * 360}, 80%, 60%)` // Spektrum warna penuh (Warna-warni!)
+            };
+        }
 
         function initPlanets() {
             planets = [];
@@ -158,33 +172,24 @@
             let spacing = canvas.height * 0.22;
 
             for (let i = 0; i < 5; i++) {
-                planets.push({
-                    x: canvas.width / 2 + (i % 2 === 0 ? 40 : -40), // Posisi agak zig-zag estetik
-                    y: startY - (i * spacing),
-                    radius: 25 + Math.random() * 15,
-                    angle: Math.random() * Math.PI * 2,
-                    rotSpeed: 0.015 + (Math.random() * 0.02),
-                    orbitDist: 55 + Math.random() * 20,
-                    color: `hsl(${200 + i * 25}, 75%, 65%)`
-                });
+                planets.push(generateRandomPlanet(startY - (i * spacing)));
             }
             
             currentPlanetIndex = 0;
-            // Letakkan player langsung di posisi orbit planet pertama
             let p = planets[0];
             player.x = p.x + Math.cos(p.angle) * p.orbitDist;
             player.y = p.y + Math.sin(p.angle) * p.orbitDist;
             player.targetX = player.x;
             player.targetY = player.y;
             player.isMoving = false;
+            particles = [];
         }
 
         function loop() {
-            // Background luar angkasa gelap
             ctx.fillStyle = '#0b0e14';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Gambar Bintang Kelap-kelip
+            // Gambar Bintang
             stars.forEach(star => {
                 star.alpha += (Math.random() - 0.5) * 0.05;
                 if(star.alpha < 0) star.alpha = 0;
@@ -192,6 +197,21 @@
                 ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
                 ctx.fillRect(star.x, star.y, star.size, star.size);
             });
+
+            // Gambar & Update Partikel Ekor
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.alpha -= p.decay;
+                p.radius -= 0.1;
+                if (p.alpha <= 0 || p.radius <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 121, 198, ${p.alpha})`;
+                    ctx.fill();
+                }
+            }
 
             if (gameState === 'PLAYING' || gameState === 'START') {
                 update();
@@ -212,33 +232,29 @@
         }
 
         function update() {
-            // Update rotasi orbit planet
             planets.forEach(p => p.angle += p.rotSpeed);
 
             let currentPlanet = planets[currentPlanetIndex];
 
             if (!player.isMoving) {
-                // Player mengunci dan berputar mengikuti orbit planet saat ini
                 player.x = currentPlanet.x + Math.cos(currentPlanet.angle) * currentPlanet.orbitDist;
                 player.y = currentPlanet.y + Math.sin(currentPlanet.angle) * currentPlanet.orbitDist;
             } else {
-                // Animasi meluncur halus (Linear Interpolation) menuju planet target
+                // Buat efek ekor saat bergerak
+                createTrail(player.x, player.y);
+
                 player.x += (player.targetX - player.x) * player.speed;
                 player.y += (player.targetY - player.y) * player.speed;
 
-                // Jika sudah sangat dekat dengan target, kunci posisinya
                 let dist = Math.hypot(player.targetX - player.x, player.targetY - player.y);
                 if (dist < 5) {
                     player.isMoving = false;
                     score++;
                     scoreDisplay.innerText = `Skor: ${score}`;
-                    
-                    // Geser layar ke bawah secara otomatis agar planet baru turun
                     shiftPlanetsDown();
                 }
             }
 
-            // Batasan Game Over: Jika planet target keluar dari layar bawah sebelum dilompati
             if(planets[currentPlanetIndex].y > canvas.height + 100) {
                 gameState = 'GAME_OVER';
             }
@@ -246,54 +262,42 @@
 
         function shiftPlanetsDown() {
             let spacing = canvas.height * 0.22;
-            // Geser semua planet ke bawah
             planets.forEach(p => p.y += spacing);
-            
-            // Hapus planet terbawah yang keluar layar, ganti dengan planet baru di atas
             planets.shift();
-            planets.push({
-                x: canvas.width / 2 + (Math.random() * 100 - 50),
-                y: planets[planets.length - 1].y - spacing,
-                radius: 25 + Math.random() * 15,
-                angle: Math.random() * Math.PI * 2,
-                rotSpeed: 0.015 + (Math.random() * 0.02),
-                orbitDist: 55 + Math.random() * 20,
-                color: `hsl(${200 + Math.random() * 100}, 75%, 65%)`
-            });
+            // Bikin planet baru di paling atas dengan visual yang fresh dan random
+            planets.push(generateRandomPlanet(planets[planets.length - 1].y - spacing));
         }
 
         function draw() {
-            // Gambar Garis Orbit dan Planet
             planets.forEach((p, idx) => {
-                // Lingkaran Orbit samar
+                // Garis Orbit
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.orbitDist, 0, Math.PI * 2);
-                ctx.strokeStyle = idx === currentPlanetIndex + 1 ? 'rgba(139, 233, 253, 0.3)' : 'rgba(255, 255, 255, 0.08)';
+                ctx.strokeStyle = idx === currentPlanetIndex + 1 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.06)';
                 ctx.lineWidth = idx === currentPlanetIndex + 1 ? 2 : 1;
                 ctx.stroke();
 
-                // Inti Planet
+                // Inti Planet dengan efek Glow Neon
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                 ctx.fillStyle = p.color;
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = 20;
                 ctx.shadowColor = p.color;
                 ctx.fill();
-                ctx.shadowBlur = 0; // reset efek glow
+                ctx.shadowBlur = 0; 
             });
 
-            // Gambar Player (Pesawat/Satelit kecil)
+            // Gambar Player
             ctx.beginPath();
             ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
             ctx.fillStyle = player.color;
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 12;
             ctx.shadowColor = player.color;
             ctx.fill();
             ctx.shadowBlur = 0;
         }
 
         function action() {
-            // Aktifkan Audio di ketukan pertama (Peraturan Browser HP)
             initAudio();
 
             if (gameState === 'START' || gameState === 'GAME_OVER') {
@@ -305,13 +309,10 @@
             }
 
             if (!player.isMoving && gameState === 'PLAYING') {
-                // Hitung posisi mendarat tepat di orbit planet berikutnya
                 let nextPlanet = planets[currentPlanetIndex + 1];
-                
                 player.targetX = nextPlanet.x + Math.cos(nextPlanet.angle) * nextPlanet.orbitDist;
                 player.targetY = nextPlanet.y + Math.sin(nextPlanet.angle) * nextPlanet.orbitDist;
                 player.isMoving = true;
-                
                 playJumpSound();
             }
         }
